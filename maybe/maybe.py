@@ -10,6 +10,8 @@
 
 import sys
 import subprocess
+import gettext
+
 from argparse import ArgumentParser
 from logging import getLogger, NullHandler
 
@@ -27,6 +29,8 @@ from . import SYSCALL_FILTERS, T, initialize_terminal
 from .filters import (delete, move, change_permissions, change_owner,    # noqa
                       create_directory, create_link, create_write_file)  # noqa
 
+# localization with gettext
+gettext.install('maybe', '/usr/share/locale')
 
 # Python 2/3 compatibility hack
 # Source: http://stackoverflow.com/a/7321970
@@ -131,31 +135,31 @@ def main(argv=sys.argv[1:]):
 
     arg_parser = ArgumentParser(
         prog="maybe",
-        usage="%(prog)s [options] command [argument ...]",
-        description="Run a command without the ability to make changes to your system " +
-                    "and list the changes it would have made.",
-        epilog="For more information, to report issues or to contribute, " +
-               "visit https://github.com/p-e-w/maybe.",
+        usage=_("%(prog)s [options] command [argument ...]"),
+        description=_("Run a command without the ability to make changes to your system ") +
+                    _("and list the changes it would have made."),
+        epilog=_("For more information, to report issues or to contribute, ") +
+               _("visit https://github.com/p-e-w/maybe."),
     )
-    arg_parser.add_argument("command", nargs="+", help="the command to run under maybe's control")
+    arg_parser.add_argument("command", nargs="+", help=_("the command to run under maybe's control"))
     arg_group = arg_parser.add_mutually_exclusive_group()
     arg_group.add_argument("-a", "--allow", nargs="+", choices=filter_scopes, metavar="OPERATION",
-                           help="allow the command to perform the specified operation(s). " +
-                                "all other operations will be denied. " +
-                                "possible values for %(metavar)s are: %(choices)s")
+                           help=_("allow the command to perform the specified operation(s). ") +
+                                _("all other operations will be denied. ") +
+                                _("possible values for %(metavar)s are: %(choices)s"))
     arg_group.add_argument("-d", "--deny", nargs="+", choices=filter_scopes, metavar="OPERATION",
-                           help="deny the command the specified operation(s). " +
-                                "all other operations will be allowed. " +
-                                "see --allow for a list of possible values for %(metavar)s. " +
-                                "--allow and --deny cannot be combined")
+                           help=_("deny the command the specified operation(s). ") +
+                                _("all other operations will be allowed. ") +
+                                _("see --allow for a list of possible values for %(metavar)s. ") +
+                                _("--allow and --deny cannot be combined"))
     arg_parser.add_argument("-l", "--list-only", action="store_true",
-                            help="list operations without header, indentation and rerun prompt")
+                            help=_("list operations without header, indentation and rerun prompt"))
     arg_parser.add_argument("--style-output", choices=["yes", "no", "auto"], default="auto",
-                            help="colorize output using ANSI escape sequences (yes/no) " +
-                                 "or automatically decide based on whether stdout is a terminal (auto, default)")
+                            help=_("colorize output using ANSI escape sequences (yes/no) ") +
+                                 _("or automatically decide based on whether stdout is a terminal (auto, default)"))
     arg_parser.add_argument("-v", "--verbose", action="count",
-                            help="if specified once, print every filtered syscall. " +
-                                 "if specified twice, print every syscall, highlighting filtered syscalls")
+                            help=_("if specified once, print every filtered syscall. ") +
+                                 _("if specified twice, print every syscall, highlighting filtered syscalls"))
     arg_parser.add_argument("--version", action="version", version="%(prog)s 0.4.0")
     args = arg_parser.parse_args(argv)
 
@@ -192,8 +196,8 @@ def main(argv=sys.argv[1:]):
     try:
         debugger.traceFork()
     except DebuggerError:
-        print(T.yellow("Warning: Running without traceFork support. " +
-                       "Syscalls from subprocesses can not be intercepted."))
+        print(T.yellow(_("Warning: Running without traceFork support. ") +
+                       _("Syscalls from subprocesses can not be intercepted.")))
 
     process = debugger.addProcess(pid, True)
     process.syscall()
@@ -201,10 +205,10 @@ def main(argv=sys.argv[1:]):
     try:
         operations = get_operations(debugger, syscall_filters, args.verbose)
     except Exception as error:
-        print(T.red("Error tracing process: %s." % error))
+        print(T.red(_("Error tracing process: %s.") % error))
         return 1
     except KeyboardInterrupt:
-        print(T.yellow("%s terminated by keyboard interrupt." % (T.bold(command) + T.yellow)))
+        print(T.yellow(_("%s terminated by keyboard interrupt.") % (T.bold(command) + T.yellow)))
         return 2
     finally:
         # Cut down all processes no matter what happens
@@ -213,19 +217,19 @@ def main(argv=sys.argv[1:]):
 
     if operations:
         if not args.list_only:
-            print("%s has prevented %s from performing %d file system operations:\n" %
+            print(_("%s has prevented %s from performing %d file system operations:\n") %
                   (T.bold("maybe"), T.bold(command), len(operations)))
         for operation in operations:
             print(("" if args.list_only else "  ") + operation)
         if not args.list_only:
             try:
-                choice = input("\nDo you want to rerun %s and permit these operations? [y/N] " % T.bold(command))
+                choice = input(_("\nDo you want to rerun %s and permit these operations? [y/N] ") % T.bold(command))
             except KeyboardInterrupt:
                 choice = ""
                 # Ctrl+C does not print a newline automatically
                 print("")
-            if choice.lower() == "y":
+            if choice.lower() == _("y"):
                 subprocess.call(args.command)
     else:
-        print("%s has not detected any file system operations from %s." %
+        print(_("%s has not detected any file system operations from %s.") %
               (T.bold("maybe"), T.bold(command)))

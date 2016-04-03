@@ -34,8 +34,9 @@ is actually happening, when in reality nothing is.
 
 %files
 %defattr(-,root,root)
-%_bindir/
-%_datadir/
+%_bindir/%name
+%_sysconfdir
+%_datadir
 %python3_sitelib
 
 %prep
@@ -46,8 +47,8 @@ is actually happening, when in reality nothing is.
 %{__python3} setup.py build_scripts
 
 %install
-%{__python3} setup.py install --skip-build --root %{buildroot}
-%{__python3} setup.py install --skip-build --no-compile --root %{buildroot}
+%{__python3} setup.py install --skip-build --root %{buildroot} 
+#{__python3} setup.py install --skip-build --no-compile --root %{buildroot}
 
 
 %clean
