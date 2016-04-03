@@ -54,7 +54,7 @@ def get_return_value_register():
     elif CPU_POWERPC:
         return "result"
     else:
-        raise NotImplementedError("Unsupported CPU architecture")
+        raise NotImplementedError(_("Unsupported CPU architecture"))
 
 
 SYSCALL_REGISTER = get_syscall_register()

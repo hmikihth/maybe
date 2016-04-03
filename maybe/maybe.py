@@ -10,6 +10,8 @@
 
 import sys
 import subprocess
+import gettext
+
 from argparse import ArgumentParser
 from logging import getLogger, NullHandler
 
@@ -25,6 +27,8 @@ from ptrace.syscall.syscall_argument import ARGUMENT_CALLBACK
 from .syscall_filters import SYSCALL_FILTERS
 from .utilities import T, SYSCALL_REGISTER, RETURN_VALUE_REGISTER
 
+# localization with gettext
+gettext.install('maybe', '/usr/share/locale')
 
 # Python 2/3 compatibility hack
 # Source: http://stackoverflow.com/a/7321970
@@ -141,15 +145,15 @@ def main(argv=sys.argv[1:]):
 
     arg_parser = ArgumentParser(
         prog="maybe",
-        usage="%(prog)s [options] command [argument ...]",
-        description="Run a command without the ability to make changes to your system " +
-                    "and list the changes it would have made.",
-        epilog="For more information, to report issues or to contribute, " +
-               "visit https://github.com/p-e-w/maybe.",
+        usage=_("%(prog)s [options] command [argument ...]"),
+        description=_("Run a command without the ability to make changes to your system ") +
+                    _("and list the changes it would have made."),
+        epilog=_("For more information, to report issues or to contribute, ") +
+               _("visit https://github.com/p-e-w/maybe."),
     )
-    arg_parser.add_argument("command", nargs="+", help="the command to run under maybe's control")
+    arg_parser.add_argument("command", nargs="+", help=_("the command to run under maybe's control"))
     arg_parser.add_argument("-l", "--list-only", action="store_true",
-                            help="list operations without header, indentation and rerun prompt")
+                            help=_("list operations without header, indentation and rerun prompt"))
     arg_parser.add_argument("--version", action="version", version="%(prog)s 0.4.0")
     args = arg_parser.parse_args(argv)
 
@@ -168,8 +172,8 @@ def main(argv=sys.argv[1:]):
     try:
         debugger.traceFork()
     except DebuggerError:
-        print(T.yellow("Warning: Running without traceFork support. " +
-                       "Syscalls from subprocesses can not be intercepted."))
+        print(T.yellow(_("Warning: Running without traceFork support. ") +
+                       _("Syscalls from subprocesses can not be intercepted.")))
 
     process = debugger.addProcess(pid, True)
     prepareProcess(process)
@@ -177,10 +181,10 @@ def main(argv=sys.argv[1:]):
     try:
         operations = get_operations(debugger)
     except Exception as error:
-        print(T.red("Error tracing process: %s." % error))
+        print(T.red(_("Error tracing process: %s.") % error))
         return 1
     except KeyboardInterrupt:
-        print(T.yellow("%s terminated by keyboard interrupt." % (T.bold(command) + T.yellow)))
+        print(T.yellow(_("%s terminated by keyboard interrupt.") % (T.bold(command) + T.yellow)))
         return 2
     finally:
         # Cut down all processes no matter what happens
@@ -189,19 +193,19 @@ def main(argv=sys.argv[1:]):
 
     if operations:
         if not args.list_only:
-            print("%s has prevented %s from performing %d file system operations:\n" %
+            print(_("%s has prevented %s from performing %d file system operations:\n") %
                   (T.bold("maybe"), T.bold(command), len(operations)))
         for operation in operations:
             print(("" if args.list_only else "  ") + operation)
         if not args.list_only:
             try:
-                choice = input("\nDo you want to rerun %s and permit these operations? [y/N] " % T.bold(command))
+                choice = input(_("\nDo you want to rerun %s and permit these operations? [y/N] ") % T.bold(command))
             except KeyboardInterrupt:
                 choice = ""
                 # Ctrl+C does not print a newline automatically
                 print("")
-            if choice.lower() == "y":
+            if choice.lower() == _("y"):
                 subprocess.call(args.command)
     else:
-        print("%s has not detected any file system operations from %s." %
+        print(_("%s has not detected any file system operations from %s.") %
               (T.bold("maybe"), T.bold(command)))

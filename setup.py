@@ -1,6 +1,17 @@
 # Based on setup.py from https://github.com/pypa/sampleproject
-
+import os
 from setuptools import setup
+
+#datadir = os.path.join('usr', 'share')
+#datafiles = [(d, [os.path.join(d,f) for f in files])
+#    for d, folders, files in os.walk(datadir)]
+datadir = 'usr'
+datafiles = []
+
+for d, folders, files in os.walk(datadir):
+    datafiles.append((os.path.join('/',d), [os.path.join(d, file) for file in files]))
+    
+print (datafiles)
 
 setup(
     name="maybe",
@@ -60,4 +71,9 @@ setup(
             "maybe = maybe.maybe:main",
         ],
     },
+    
+    data_files=datafiles,
+#    data_files= [
+#        ('/usr/share/', listfiles("usr/share/","*")),
+#    ],
 )

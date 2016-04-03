@@ -19,45 +19,45 @@ from .utilities import T, format_permissions
 
 
 def format_delete(path):
-    return "%s %s" % (T.red("delete"), T.underline(abspath(path)))
+    return "%s %s" % (T.red(_("delete")), T.underline(abspath(path)))
 
 
 def format_move(path_old, path_new):
     path_old = abspath(path_old)
     path_new = abspath(path_new)
     if dirname(path_old) == dirname(path_new):
-        label = "rename"
+        label = _("rename")
         path_new = basename(path_new)
     else:
-        label = "move"
-    return "%s %s to %s" % (T.green(label), T.underline(path_old), T.underline(path_new))
+        label = _("move")
+    return _("%s %s to %s") % (T.green(label), T.underline(path_old), T.underline(path_new))
 
 
 def format_change_permissions(path, permissions):
-    return "%s of %s to %s" % (T.yellow("change permissions"), T.underline(abspath(path)),
+    return _("%s of %s to %s") % (T.yellow(_("change permissions")), T.underline(abspath(path)),
                                T.bold(format_permissions(permissions)))
 
 
 def format_change_owner(path, owner, group):
     if owner == -1:
-        label = "change group"
+        label = _("change group")
         owner = getgrgid(group)[0]
     elif group == -1:
-        label = "change owner"
+        label = _("change owner")
         owner = getpwuid(owner)[0]
     else:
-        label = "change owner"
+        label = _("change owner")
         owner = getpwuid(owner)[0] + ":" + getgrgid(group)[0]
-    return "%s of %s to %s" % (T.yellow(label), T.underline(abspath(path)), T.bold(owner))
+    return _("%s of %s to %s") % (T.yellow(label), T.underline(abspath(path)), T.bold(owner))
 
 
 def format_create_directory(path):
-    return "%s %s" % (T.cyan("create directory"), T.underline(abspath(path)))
+    return "%s %s" % (T.cyan(_("create directory")), T.underline(abspath(path)))
 
 
 def format_create_link(path_source, path_target, symbolic):
-    label = "create symbolic link" if symbolic else "create hard link"
-    return "%s from %s to %s" % (T.cyan(label), T.underline(abspath(path_source)), T.underline(abspath(path_target)))
+    label = _("create symbolic link") if symbolic else _("create hard link")
+    return _("%s from %s to %s") % (T.cyan(label), T.underline(abspath(path_source)), T.underline(abspath(path_target)))
 
 
 # Start with a large number to avoid collisions with other FDs
@@ -85,9 +85,9 @@ def format_open(path, flags):
     if path in allowed_files:
         return None
     elif (flags & O_CREAT) and not exists(path):
-        return "%s %s" % (T.cyan("create file"), T.underline(path))
+        return "%s %s" % (T.cyan(_("create file")), T.underline(path))
     elif (flags & O_TRUNC) and exists(path):
-        return "%s %s" % (T.red("truncate file"), T.underline(path))
+        return "%s %s" % (T.red(_("truncate file")), T.underline(path))
     else:
         return None
 
@@ -110,16 +110,16 @@ def format_mknod(path, type):
     if exists(path):
         return None
     elif (type & S_IFCHR):
-        label = "create character special file"
+        label = _("create character special file")
     elif (type & S_IFBLK):
-        label = "create block special file"
+        label = _("create block special file")
     elif (type & S_IFIFO):
-        label = "create named pipe"
+        label = _("create named pipe")
     elif (type & S_IFSOCK):
-        label = "create socket"
+        label = _("create socket")
     else:
         # mknod(2): "Zero file type is equivalent to type S_IFREG"
-        label = "create file"
+        label = _("create file")
     return "%s %s" % (T.cyan(label), T.underline(path))
 
 
@@ -130,7 +130,7 @@ def substitute_mknod(path, type):
 def format_write(file_descriptor, byte_count):
     if file_descriptor in file_descriptors:
         path = file_descriptors[file_descriptor]
-        return "%s %s to %s" % (T.red("write"), T.bold("%d bytes" % byte_count), T.underline(path))
+        return _("%s %s to %s") % (T.red(_("write")), T.bold(_("%d bytes") % byte_count), T.underline(path))
     else:
         return None
 
