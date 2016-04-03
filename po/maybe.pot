@@ -1,0 +1,174 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) YEAR THE PACKAGE'S COPYRIGHT HOLDER
+# This file is distributed under the same license as the PACKAGE package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, YEAR.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: PACKAGE VERSION\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2016-04-03 01:48+0100\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"Language: \n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=CHARSET\n"
+"Content-Transfer-Encoding: 8bit\n"
+
+#: maybe/maybe.py:148
+#, python-format
+msgid "%(prog)s [options] command [argument ...]"
+msgstr ""
+
+#: maybe/maybe.py:149
+msgid "Run a command without the ability to make changes to your system "
+msgstr ""
+
+#: maybe/maybe.py:150
+msgid "and list the changes it would have made."
+msgstr ""
+
+#: maybe/maybe.py:151
+msgid "For more information, to report issues or to contribute, "
+msgstr ""
+
+#: maybe/maybe.py:152
+msgid "visit https://github.com/p-e-w/maybe."
+msgstr ""
+
+#: maybe/maybe.py:154
+msgid "the command to run under maybe's control"
+msgstr ""
+
+#: maybe/maybe.py:156
+msgid "list operations without header, indentation and rerun prompt"
+msgstr ""
+
+#: maybe/maybe.py:175
+msgid "Warning: Running without traceFork support. "
+msgstr ""
+
+#: maybe/maybe.py:176
+msgid "Syscalls from subprocesses can not be intercepted."
+msgstr ""
+
+#: maybe/maybe.py:184
+#, python-format
+msgid "Error tracing process: %s."
+msgstr ""
+
+#: maybe/maybe.py:187
+#, python-format
+msgid "%s terminated by keyboard interrupt."
+msgstr ""
+
+#: maybe/maybe.py:196
+#, python-format
+msgid "%s has prevented %s from performing %d file system operations:\n"
+msgstr ""
+
+#: maybe/maybe.py:202
+#, python-format
+msgid ""
+"\n"
+"Do you want to rerun %s and permit these operations? [y/N] "
+msgstr ""
+
+#: maybe/maybe.py:207
+msgid "y"
+msgstr ""
+
+#: maybe/maybe.py:210
+#, python-format
+msgid "%s has not detected any file system operations from %s."
+msgstr ""
+
+#: maybe/syscall_filters.py:22
+msgid "delete"
+msgstr ""
+
+#: maybe/syscall_filters.py:29
+msgid "rename"
+msgstr ""
+
+#: maybe/syscall_filters.py:32
+msgid "move"
+msgstr ""
+
+#: maybe/syscall_filters.py:33 maybe/syscall_filters.py:133
+#, python-format
+msgid "%s %s to %s"
+msgstr ""
+
+#: maybe/syscall_filters.py:37 maybe/syscall_filters.py:51
+#, python-format
+msgid "%s of %s to %s"
+msgstr ""
+
+#: maybe/syscall_filters.py:37
+msgid "change permissions"
+msgstr ""
+
+#: maybe/syscall_filters.py:43
+msgid "change group"
+msgstr ""
+
+#: maybe/syscall_filters.py:46 maybe/syscall_filters.py:49
+msgid "change owner"
+msgstr ""
+
+#: maybe/syscall_filters.py:55
+msgid "create directory"
+msgstr ""
+
+#: maybe/syscall_filters.py:59
+msgid "create symbolic link"
+msgstr ""
+
+#: maybe/syscall_filters.py:59
+msgid "create hard link"
+msgstr ""
+
+#: maybe/syscall_filters.py:60
+#, python-format
+msgid "%s from %s to %s"
+msgstr ""
+
+#: maybe/syscall_filters.py:88 maybe/syscall_filters.py:122
+msgid "create file"
+msgstr ""
+
+#: maybe/syscall_filters.py:90
+msgid "truncate file"
+msgstr ""
+
+#: maybe/syscall_filters.py:113
+msgid "create character special file"
+msgstr ""
+
+#: maybe/syscall_filters.py:115
+msgid "create block special file"
+msgstr ""
+
+#: maybe/syscall_filters.py:117
+msgid "create named pipe"
+msgstr ""
+
+#: maybe/syscall_filters.py:119
+msgid "create socket"
+msgstr ""
+
+#: maybe/syscall_filters.py:133
+msgid "write"
+msgstr ""
+
+#: maybe/syscall_filters.py:133
+#, python-format
+msgid "%d bytes"
+msgstr ""
+
+#: maybe/utilities.py:57
+msgid "Unsupported CPU architecture"
+msgstr ""
