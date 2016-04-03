@@ -12,4 +12,4 @@ def test_syscall_filters():
 
 
 def test_no_operations():
-    assert maybe("true") == "maybe has not detected any file system operations from true."
+    assert maybe("true") == _("maybe has not detected any file system operations from true.")
