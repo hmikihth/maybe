@@ -52,7 +52,7 @@ setup(
 
     keywords="sandbox files access",
 
-    packages=["maybe"],
+    packages=["maybe","maybe.syscall_filter_modules"],
 
     install_requires=[
         "blessings==1.6",
@@ -73,7 +73,4 @@ setup(
     },
     
     data_files=datafiles,
-#    data_files= [
-#        ('/usr/share/', listfiles("usr/share/","*")),
-#    ],
 )

@@ -24,8 +24,11 @@ from ptrace.syscall import SYSCALL_PROTOTYPES, FILENAME_ARGUMENTS
 from ptrace.syscall.posix_constants import SYSCALL_ARG_DICT
 from ptrace.syscall.syscall_argument import ARGUMENT_CALLBACK
 
-from .syscall_filters import SYSCALL_FILTERS
-from .utilities import T, SYSCALL_REGISTER, RETURN_VALUE_REGISTER
+from . import SYSCALL_FILTERS, T, initialize_terminal
+from .utilities import SYSCALL_REGISTER, RETURN_VALUE_REGISTER
+# Filter modules are imported not to use them as symbols, but to execute their top-level code
+from .filters import (delete, move, change_permissions, change_owner,    # noqa
+                      create_directory, create_link, create_write_file)  # noqa
 
 # localization with gettext
 gettext.install('maybe', '/usr/share/locale')
@@ -42,17 +45,21 @@ except NameError:
 getLogger().addHandler(NullHandler())
 
 
-# Register filtered syscalls with python-ptrace so they are parsed correctly
 SYSCALL_PROTOTYPES.clear()
 FILENAME_ARGUMENTS.clear()
-for syscall_filter in SYSCALL_FILTERS:
-    SYSCALL_PROTOTYPES[syscall_filter.name] = syscall_filter.signature
-    for argument in syscall_filter.signature[1]:
-        if argument[0] == "const char *":
-            FILENAME_ARGUMENTS.add(argument[1])
 
-# Turn list into dictionary indexed by syscall name for fast filter retrieval
-SYSCALL_FILTERS = {syscall_filter.name: syscall_filter for syscall_filter in SYSCALL_FILTERS}
+NEW_SYSCALL_FILTERS = {}
+
+for scope_filters in SYSCALL_FILTERS.values():
+    for syscall_filter in scope_filters:
+        NEW_SYSCALL_FILTERS[syscall_filter.name] = syscall_filter
+        # Register filtered syscalls with python-ptrace so they are parsed correctly
+        SYSCALL_PROTOTYPES[syscall_filter.name] = syscall_filter.signature
+        for argument in syscall_filter.signature[1]:
+            if argument[0] == "const char *":
+                FILENAME_ARGUMENTS.add(argument[1])
+
+SYSCALL_FILTERS = NEW_SYSCALL_FILTERS
 
 # Prevent python-ptrace from decoding arguments to keep raw numerical values
 SYSCALL_ARG_DICT.clear()
@@ -136,12 +143,11 @@ def get_operations(debugger):
 
 def main(argv=sys.argv[1:]):
     # Insert positional argument separator, if not already present
-    for i, argument in enumerate(argv):
-        if argument == "--":
-            break
-        elif not argument.startswith("-"):
-            argv.insert(i, "--")
-            break
+    if "--" not in argv:
+        for i, argument in enumerate(argv):
+            if not argument.startswith("-"):
+                argv.insert(i, "--")
+                break
 
     arg_parser = ArgumentParser(
         prog="maybe",
@@ -153,9 +159,18 @@ def main(argv=sys.argv[1:]):
     )
     arg_parser.add_argument("command", nargs="+", help=_("the command to run under maybe's control"))
     arg_parser.add_argument("-l", "--list-only", action="store_true",
+<<<<<<< HEAD
                             help=_("list operations without header, indentation and rerun prompt"))
+=======
+                            help="list operations without header, indentation and rerun prompt")
+    arg_parser.add_argument("--style-output", choices=["yes", "no", "auto"], default="auto",
+                            help="colorize output using ANSI escape sequences (yes/no) " +
+                                 "or automatically decide based on whether stdout is a terminal (auto, default)")
+>>>>>>> upstream/master
     arg_parser.add_argument("--version", action="version", version="%(prog)s 0.4.0")
     args = arg_parser.parse_args(argv)
+
+    initialize_terminal(args.style_output)
 
     # This is basically "shlex.join"
     command = " ".join([(("'%s'" % arg) if (" " in arg) else arg) for arg in args.command])
