@@ -159,14 +159,10 @@ def main(argv=sys.argv[1:]):
     )
     arg_parser.add_argument("command", nargs="+", help=_("the command to run under maybe's control"))
     arg_parser.add_argument("-l", "--list-only", action="store_true",
-<<<<<<< HEAD
                             help=_("list operations without header, indentation and rerun prompt"))
-=======
-                            help="list operations without header, indentation and rerun prompt")
     arg_parser.add_argument("--style-output", choices=["yes", "no", "auto"], default="auto",
-                            help="colorize output using ANSI escape sequences (yes/no) " +
-                                 "or automatically decide based on whether stdout is a terminal (auto, default)")
->>>>>>> upstream/master
+                            help=_("colorize output using ANSI escape sequences (yes/no) ") +
+                                 _("or automatically decide based on whether stdout is a terminal (auto, default)"))
     arg_parser.add_argument("--version", action="version", version="%(prog)s 0.4.0")
     args = arg_parser.parse_args(argv)
 
