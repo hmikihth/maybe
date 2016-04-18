@@ -23,7 +23,7 @@
 
 
 ---
-
+It is a fork of the maybe. The original developer team didn't want localization but in the blackPanther OS Linux distribution it will be translated. If you need gettext localization use this fork.
 
 ```
 rm -rf pic*
