@@ -142,7 +142,6 @@ def main(argv=sys.argv[1:]):
                _("visit https://github.com/p-e-w/maybe."),
     )
     arg_parser.add_argument("command", nargs="+", help=_("the command to run under maybe's control"))
-<<<<<<< HEAD
     arg_group = arg_parser.add_mutually_exclusive_group()
     arg_group.add_argument("-a", "--allow", nargs="+", choices=filter_scopes, metavar="OPERATION",
                            help=_("allow the command to perform the specified operation(s). ") +
@@ -153,19 +152,14 @@ def main(argv=sys.argv[1:]):
                                 _("all other operations will be allowed. ") +
                                 _("see --allow for a list of possible values for %(metavar)s. ") +
                                 _("--allow and --deny cannot be combined"))
-=======
->>>>>>> 5e5bae3b65f0ce60b55e4caa2009b9e9edea27cb
     arg_parser.add_argument("-l", "--list-only", action="store_true",
                             help=_("list operations without header, indentation and rerun prompt"))
     arg_parser.add_argument("--style-output", choices=["yes", "no", "auto"], default="auto",
                             help=_("colorize output using ANSI escape sequences (yes/no) ") +
                                  _("or automatically decide based on whether stdout is a terminal (auto, default)"))
-<<<<<<< HEAD
     arg_parser.add_argument("-v", "--verbose", action="count",
                             help=_("if specified once, print every filtered syscall. ") +
                                  _("if specified twice, print every syscall, highlighting filtered syscalls"))
-=======
->>>>>>> 5e5bae3b65f0ce60b55e4caa2009b9e9edea27cb
     arg_parser.add_argument("--version", action="version", version="%(prog)s 0.4.0")
     args = arg_parser.parse_args(argv)
 
