@@ -13,29 +13,6 @@ datafiles = []
 datafiles.append((BASH_COMP_DIR, ["maybe_bc"]))
 
 for po in glob.glob (os.path.join (PO_DIR, '*.po')):
-            lang = os.path.basename(po[:-3])
-            mo = os.path.join('build', MO_DIR, lang, 'LC_MESSAGES', 'maybe.mo')
-            print (mo)
-            datafiles.append((MO_DIR, [mo]))
-            directory = os.path.dirname(mo)
-            if not os.path.exists(directory):
-                print('creating %s' % directory)
-                os.makedirs(directory)
-
-            print('compiling %s -> %s' % (po, mo))
-            try:
-                rc = subprocess.call(['msgfmt', '-o', mo, po])
-                if rc != 0:
-                    raise "Warning, msgfmt returned %d" % rc
-            except:
-                    print ("Building gettext files failed.")
-                    print ("%s: %s" % (type(e), e))
-                    sys.exit(1)
-
-datafiles = []
-datafiles.append((BASH_COMP_DIR, ["maybe_bc"]))
-
-for po in glob.glob (os.path.join (PO_DIR, '*.po')):
     lang = os.path.basename(po[:-3])
     mo = os.path.join('build', MO_DIR, lang, 'LC_MESSAGES', 'maybe.mo')
     datafiles.append((MO_DIR, [mo]))
