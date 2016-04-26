@@ -1,17 +1,36 @@
-# Based on setup.py from https://github.com/pypa/sampleproject
 import os
+import glob
+from distutils.command.build import build
+from distutils.command.install_data import install_data
 from setuptools import setup
+import subprocess
 
-#datadir = os.path.join('usr', 'share')
-#datafiles = [(d, [os.path.join(d,f) for f in files])
-#    for d, folders, files in os.walk(datadir)]
-datadir = 'usr'
+PO_DIR = "po"
+MO_DIR = "share/locale"
+BASH_COMP_DIR = "/etc/bash_completion.d"
+
 datafiles = []
+datafiles.append((BASH_COMP_DIR, ["maybe_bc"]))
 
-for d, folders, files in os.walk(datadir):
-    datafiles.append((os.path.join('/',d), [os.path.join(d, file) for file in files]))
-    
-print (datafiles)
+for po in glob.glob (os.path.join (PO_DIR, '*.po')):
+            lang = os.path.basename(po[:-3])
+            mo = os.path.join('build', MO_DIR, lang, 'LC_MESSAGES', 'maybe.mo')
+            print (mo)
+            datafiles.append((MO_DIR, [mo]))
+            directory = os.path.dirname(mo)
+            if not os.path.exists(directory):
+                print('creating %s' % directory)
+                os.makedirs(directory)
+
+            print('compiling %s -> %s' % (po, mo))
+            try:
+                rc = subprocess.call(['msgfmt', '-o', mo, po])
+                if rc != 0:
+                    raise "Warning, msgfmt returned %d" % rc
+            except:
+                    print ("Building gettext files failed.")
+                    print ("%s: %s" % (type(e), e))
+                    sys.exit(1)
 
 setup(
     name="maybe",
@@ -52,7 +71,7 @@ setup(
 
     keywords="sandbox files access",
 
-    packages=["maybe","maybe.syscall_filter_modules"],
+    packages=["maybe", "maybe.filters"],
 
     install_requires=[
         "blessings==1.6",
@@ -71,6 +90,6 @@ setup(
             "maybe = maybe.maybe:main",
         ],
     },
-    
+
     data_files=datafiles,
 )
