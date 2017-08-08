@@ -1,6 +1,6 @@
 # maybe - see what a program does before deciding whether you really want it to happen
 #
-# Copyright (c) 2016 Philipp Emanuel Weidmann <pew@worldwidemann.com>
+# Copyright (c) 2016-2017 Philipp Emanuel Weidmann <pew@worldwidemann.com>
 #
 # Nemo vir est qui mundum non reddat meliorem.
 #
@@ -8,33 +8,23 @@
 # (https://gnu.org/licenses/gpl.html)
 
 
-from os.path import abspath, dirname, basename
+from os.path import dirname, basename
 
-from maybe import SyscallFilter, SYSCALL_FILTERS, T
+from maybe import T, register_filter
 
 
-def format_move(path_old, path_new):
-    path_old = abspath(path_old)
-    path_new = abspath(path_new)
+def filter_move(path_old, path_new):
     if dirname(path_old) == dirname(path_new):
         label = "rename"
         path_new = basename(path_new)
     else:
         label = "move"
-    return "%s %s to %s" % (T.green(label), T.underline(path_old), T.underline(path_new))
+    return "%s %s to %s" % (T.green(label), T.underline(path_old), T.underline(path_new)), 0
 
 
-SYSCALL_FILTERS["move"] = [
-    SyscallFilter(
-        name="rename",
-        format=lambda args: format_move(args[0], args[1]),
-    ),
-    SyscallFilter(
-        name="renameat",
-        format=lambda args: format_move(args[1], args[3]),
-    ),
-    SyscallFilter(
-        name="renameat2",
-        format=lambda args: format_move(args[1], args[3]),
-    ),
-]
+register_filter("rename", lambda process, args:
+                filter_move(process.full_path(args[0]), process.full_path(args[1])))
+register_filter("renameat", lambda process, args:
+                filter_move(process.full_path(args[1], args[0]), process.full_path(args[3], args[2])))
+register_filter("renameat2", lambda process, args:
+                filter_move(process.full_path(args[1], args[0]), process.full_path(args[3], args[2])))

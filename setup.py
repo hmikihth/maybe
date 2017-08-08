@@ -57,8 +57,6 @@ setup(
         "License :: OSI Approved :: GNU General Public License v3 (GPLv3)",
 
         "Operating System :: POSIX :: Linux",
-        "Operating System :: POSIX :: BSD :: FreeBSD",
-        "Operating System :: POSIX :: BSD :: OpenBSD",
 
         "Programming Language :: Python :: 2",
         "Programming Language :: Python :: 2.7",
@@ -66,6 +64,7 @@ setup(
         "Programming Language :: Python :: 3.3",
         "Programming Language :: Python :: 3.4",
         "Programming Language :: Python :: 3.5",
+        "Programming Language :: Python :: 3.6",
     ],
 
     keywords="sandbox files access",
@@ -73,8 +72,9 @@ setup(
     packages=["maybe", "maybe.filters"],
 
     install_requires=[
+        "six==1.10.0",
         "blessings==1.6",
-        "python-ptrace>=0.8.1",
+        "python-ptrace==0.9.1",
     ],
 
     setup_requires=[
