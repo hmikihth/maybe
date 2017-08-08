@@ -1,6 +1,6 @@
 # maybe - see what a program does before deciding whether you really want it to happen
 #
-# Copyright (c) 2016 Philipp Emanuel Weidmann <pew@worldwidemann.com>
+# Copyright (c) 2016-2017 Philipp Emanuel Weidmann <pew@worldwidemann.com>
 #
 # Nemo vir est qui mundum non reddat meliorem.
 #
@@ -8,62 +8,36 @@
 # (https://gnu.org/licenses/gpl.html)
 
 
-from os.path import abspath, exists
+from os.path import exists
 from os import O_WRONLY, O_RDWR, O_APPEND, O_CREAT, O_TRUNC
 from stat import S_IFCHR, S_IFBLK, S_IFIFO, S_IFSOCK
 
-from maybe import SyscallFilter, SYSCALL_FILTERS, T
-
-
-# Start with a large number to avoid collisions with other FDs
-# TODO: This approach is extremely brittle!
-next_file_descriptor = 1000
-file_descriptors = {}
-
-
-def get_next_file_descriptor():
-    global next_file_descriptor
-    file_descriptor = next_file_descriptor
-    next_file_descriptor += 1
-    return file_descriptor
-
-
-def get_file_descriptor_path(file_descriptor):
-    return file_descriptors.get(file_descriptor, "/dev/fd/%d" % file_descriptor)
+from maybe import T, register_filter
 
 
 allowed_files = set(["/dev/null", "/dev/zero", "/dev/tty"])
 
 
-def format_open(path, flags):
-    path = abspath(path)
+def filter_open(process, path, flags):
     if path in allowed_files:
-        return None
-    elif (flags & O_CREAT) and not exists(path):
-        return "%s %s" % (T.cyan("create file"), T.underline(path))
+        return None, None
+    if (flags & O_CREAT) and not exists(path):
+        operation = "%s %s" % (T.cyan("create file"), T.underline(path))
     elif (flags & O_TRUNC) and exists(path):
-        return "%s %s" % (T.red("truncate file"), T.underline(path))
+        operation = "%s %s" % (T.red("truncate file"), T.underline(path))
     else:
-        return None
-
-
-def substitute_open(path, flags):
-    path = abspath(path)
-    if path in allowed_files:
-        return None
-    elif (flags & O_WRONLY) or (flags & O_RDWR) or (flags & O_APPEND) or (format_open(path, flags) is not None):
+        operation = None
+    if (flags & O_WRONLY) or (flags & O_RDWR) or (flags & O_APPEND) or (operation is not None):
         # File might be written to later, so we need to track the file descriptor
-        file_descriptor = get_next_file_descriptor()
-        file_descriptors[file_descriptor] = path
-        return file_descriptor
+        return_value = process.register_path(path)
     else:
-        return None
+        return_value = None
+    return operation, return_value
 
 
-def format_mknod(path, type):
-    path = abspath(path)
+def filter_mknod(path, type):
     if exists(path):
-        return None
+        return None, None
     elif (type & S_IFCHR):
         label = "create character special file"
     elif (type & S_IFBLK):
@@ -75,97 +49,40 @@ def format_mknod(path, type):
     else:
         # mknod(2): "Zero file type is equivalent to type S_IFREG"
         label = "create file"
-    return "%s %s" % (T.cyan(label), T.underline(path))
+    return "%s %s" % (T.cyan(label), T.underline(path)), 0
 
 
-def substitute_mknod(path, type):
-    return None if (format_mknod(path, type) is None) else 0
-
-
-def format_write(file_descriptor, byte_count):
-    if file_descriptor in file_descriptors:
-        path = file_descriptors[file_descriptor]
-        return "%s %s to %s" % (T.red("write"), T.bold("%d bytes" % byte_count), T.underline(path))
+def filter_write(process, file_descriptor, byte_count):
+    if process.is_tracked_descriptor(file_descriptor):
+        path = process.descriptor_path(file_descriptor)
+        return "%s %s to %s" % (T.red("write"), T.bold("%d bytes" % byte_count), T.underline(path)), byte_count
     else:
-        return None
+        return None, None
 
 
-def substitute_write(file_descriptor, byte_count):
-    return None if (format_write(file_descriptor, byte_count) is None) else byte_count
-
-
-def substitute_dup(file_descriptor_old, file_descriptor_new=None):
-    if file_descriptor_old in file_descriptors:
-        if file_descriptor_new is None:
-            file_descriptor_new = get_next_file_descriptor()
+def filter_dup(process, file_descriptor_old, file_descriptor_new=None):
+    if process.is_tracked_descriptor(file_descriptor_old):
         # Copy tracked file descriptor
-        file_descriptors[file_descriptor_new] = file_descriptors[file_descriptor_old]
-        return file_descriptor_new
+        return None, process.register_path(process.descriptor_path(file_descriptor_old), file_descriptor_new)
     else:
-        return None
+        return None, None
 
 
-SYSCALL_FILTERS["create_write_file"] = [
-    SyscallFilter(
-        name="open",
-        format=lambda args: format_open(args[0], args[1]),
-        substitute=lambda args: substitute_open(args[0], args[1]),
-    ),
-    SyscallFilter(
-        name="creat",
-        format=lambda args: format_open(args[0], O_CREAT | O_WRONLY | O_TRUNC),
-        substitute=lambda args: substitute_open(args[0], O_CREAT | O_WRONLY | O_TRUNC),
-    ),
-    SyscallFilter(
-        name="openat",
-        format=lambda args: format_open(args[1], args[2]),
-        substitute=lambda args: substitute_open(args[1], args[2]),
-    ),
-    SyscallFilter(
-        name="mknod",
-        format=lambda args: format_mknod(args[0], args[1]),
-        substitute=lambda args: substitute_mknod(args[0], args[1]),
-    ),
-    SyscallFilter(
-        name="mknodat",
-        format=lambda args: format_mknod(args[1], args[2]),
-        substitute=lambda args: substitute_mknod(args[1], args[2]),
-    ),
-    SyscallFilter(
-        name="write",
-        format=lambda args: format_write(args[0], args[2]),
-        substitute=lambda args: substitute_write(args[0], args[2]),
-    ),
-    SyscallFilter(
-        name="pwrite",
-        format=lambda args: format_write(args[0], args[2]),
-        substitute=lambda args: substitute_write(args[0], args[2]),
-    ),
-    SyscallFilter(
-        name="writev",
-        # TODO: Actual byte count is iovcnt * iov.iov_len
-        format=lambda args: format_write(args[0], args[2]),
-        substitute=lambda args: substitute_write(args[0], args[2]),
-    ),
-    SyscallFilter(
-        name="pwritev",
-        # TODO: Actual byte count is iovcnt * iov.iov_len
-        format=lambda args: format_write(args[0], args[2]),
-        substitute=lambda args: substitute_write(args[0], args[2]),
-    ),
-    SyscallFilter(
-        name="dup",
-        format=lambda args: None,
-        substitute=lambda args: substitute_dup(args[0]),
-    ),
-    SyscallFilter(
-        name="dup2",
-        format=lambda args: None,
-        substitute=lambda args: substitute_dup(args[0], args[1]),
-    ),
-    SyscallFilter(
-        name="dup3",
-        format=lambda args: None,
-        substitute=lambda args: substitute_dup(args[0], args[1]),
-    ),
-]
+register_filter("open", lambda process, args:
+                filter_open(process, process.full_path(args[0]), args[1]))
+register_filter("creat", lambda process, args:
+                filter_open(process, process.full_path(args[0]), O_CREAT | O_WRONLY | O_TRUNC))
+register_filter("openat", lambda process, args:
+                filter_open(process, process.full_path(args[1], args[0]), args[2]))
+register_filter("mknod", lambda process, args:
+                filter_mknod(process.full_path(args[0]), args[1]))
+register_filter("mknodat", lambda process, args:
+                filter_mknod(process.full_path(args[1], args[0]), args[2]))
+register_filter("write", lambda process, args: filter_write(process, args[0], args[2]))
+register_filter("pwrite", lambda process, args: filter_write(process, args[0], args[2]))
+# TODO: Actual byte count is iovcnt * iov.iov_len
+register_filter("writev", lambda process, args: filter_write(process, args[0], args[2]))
+register_filter("pwritev", lambda process, args: filter_write(process, args[0], args[2]))
+register_filter("dup", lambda process, args: filter_dup(process, args[0]))
+register_filter("dup2", lambda process, args: filter_dup(process, args[0], args[1]))
+register_filter("dup3", lambda process, args: filter_dup(process, args[0], args[1]))

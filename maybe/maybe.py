@@ -1,6 +1,6 @@
 # maybe - see what a program does before deciding whether you really want it to happen
 #
-# Copyright (c) 2016 Philipp Emanuel Weidmann <pew@worldwidemann.com>
+# Copyright (c) 2016-2017 Philipp Emanuel Weidmann <pew@worldwidemann.com>
 #
 # Nemo vir est qui mundum non reddat meliorem.
 #
@@ -8,23 +8,31 @@
 # (https://gnu.org/licenses/gpl.html)
 
 
+from __future__ import unicode_literals, print_function
+
 import sys
 import subprocess
 import gettext
 
+from imp import load_source
+from ast import literal_eval
 from argparse import ArgumentParser
 from logging import getLogger, NullHandler
+from os.path import splitext, basename
 
+from six import PY2
+from six.moves import input
 from ptrace.tools import locateProgram
 from ptrace.debugger import ProcessSignal, NewProcessEvent, ProcessExecution, ProcessExit
 from ptrace.debugger.child import createChild
-from ptrace.debugger.debugger import PtraceDebugger, DebuggerError
+from ptrace.debugger.debugger import PtraceDebugger
 from ptrace.func_call import FunctionCallOptions
 from ptrace.syscall import SYSCALL_REGISTER, RETURN_VALUE_REGISTER, DIRFD_ARGUMENTS
 from ptrace.syscall.posix_constants import SYSCALL_ARG_DICT
 from ptrace.syscall.syscall_argument import ARGUMENT_CALLBACK
 
 from . import SYSCALL_FILTERS, T, initialize_terminal
+from .process import Process
 # Filter modules are imported not to use them as symbols, but to execute their top-level code
 from .filters import (delete, move, change_permissions, change_owner,    # noqa
                       create_directory, create_link, create_write_file)  # noqa
@@ -32,38 +40,23 @@ from .filters import (delete, move, change_permissions, change_owner,    # noqa
 # localization with gettext
 gettext.install('maybe', '/usr/share/locale')
 
-# Python 2/3 compatibility hack
-# Source: http://stackoverflow.com/a/7321970
-try:
-    input = raw_input
-except NameError:
-    pass
-
-
-# Suppress logging output from python-ptrace
-getLogger().addHandler(NullHandler())
-
-
 def parse_argument(argument):
-    argument = argument.createText()
-    if argument.startswith(("'", '"')):
-        # Remove quotes from string argument
-        return argument[1:-1]
-    elif argument.startswith(("b'", 'b"')):
-        # Python 3 bytes literal
-        return argument[2:-1]
-    else:
-        # Note that "int" with base 0 infers the base from the prefix
-        return int(argument, 0)
-
-
-format_options = FunctionCallOptions(
-    replace_socketcall=False,
-    string_max_length=4096,
-)
+    # createText() uses repr() to render the argument,
+    # for which literal_eval() acts as an inverse function
+    # (see http://stackoverflow.com/a/24886425)
+    argument = literal_eval(argument.createText())
+    if PY2 and isinstance(argument, str):
+        argument = unicode(argument, sys.getfilesystemencoding())  # noqa
+    return argument
 
 
 def get_operations(debugger, syscall_filters, verbose):
+    format_options = FunctionCallOptions(
+        replace_socketcall=False,
+        string_max_length=4096,
+    )
+
+    processes = {}
     operations = []
 
     while True:
@@ -100,15 +93,16 @@ def get_operations(debugger, syscall_filters, verbose):
                 elif verbose == 2:
                     print(T.bold(syscall.format()))
 
-                syscall_filter = syscall_filters[syscall.name]
-
+                filter_function = syscall_filters[syscall.name]
+                if process.pid not in processes:
+                    processes[process.pid] = Process(process)
                 arguments = [parse_argument(argument) for argument in syscall.arguments]
 
-                operation = syscall_filter.format(arguments)
+                operation, return_value = filter_function(processes[process.pid], arguments)
+
                 if operation is not None:
                     operations.append(operation)
 
-                return_value = syscall_filter.substitute(arguments)
                 if return_value is not None:
                     # Set invalid syscall number to prevent call execution
                     process.setreg(SYSCALL_REGISTER, -1)
@@ -124,7 +118,8 @@ def get_operations(debugger, syscall_filters, verbose):
 
 
 def main(argv=sys.argv[1:]):
-    filter_scopes = sorted(SYSCALL_FILTERS.keys())
+    if PY2:
+        argv = [unicode(arg, sys.getfilesystemencoding()) for arg in argv]  # noqa
 
     # Insert positional argument separator, if not already present
     if "--" not in argv:
@@ -143,15 +138,20 @@ def main(argv=sys.argv[1:]):
     )
     arg_parser.add_argument("command", nargs="+", help=_("the command to run under maybe's control"))
     arg_group = arg_parser.add_mutually_exclusive_group()
-    arg_group.add_argument("-a", "--allow", nargs="+", choices=filter_scopes, metavar="OPERATION",
+    arg_group.add_argument("-a", "--allow", nargs="+", metavar="OPERATION",
                            help=_("allow the command to perform the specified operation(s). ") +
                                 _("all other operations will be denied. ") +
-                                _("possible values for %(metavar)s are: %(choices)s"))
-    arg_group.add_argument("-d", "--deny", nargs="+", choices=filter_scopes, metavar="OPERATION",
+                                _("possible values for %(metavar)s are: ") +
+                                ", ".join(sorted(SYSCALL_FILTERS.keys())) +
+                                _("; as well as any filter scopes defined by loaded plugins"))
+    arg_group.add_argument("-d", "--deny", nargs="+", metavar="OPERATION",
                            help=_("deny the command the specified operation(s). ") +
                                 _("all other operations will be allowed. ") +
                                 _("see --allow for a list of possible values for %(metavar)s. ") +
                                 _("--allow and --deny cannot be combined"))
+    arg_parser.add_argument("-p", "--plugin", nargs="+", metavar="FILE",
+                            help=_("load the specified plugin script(s). ") +
+                                 _("see the README for details and plugin API documentation"))
     arg_parser.add_argument("-l", "--list-only", action="store_true",
                             help=_("list operations without header, indentation and rerun prompt"))
     arg_parser.add_argument("--style-output", choices=["yes", "no", "auto"], default="auto",
@@ -165,16 +165,42 @@ def main(argv=sys.argv[1:]):
 
     initialize_terminal(args.style_output)
 
+    if args.plugin is not None:
+        for plugin_path in args.plugin:
+            try:
+                module_name = splitext(basename(plugin_path))[0]
+                # Note: imp.load_source is *long* deprecated and not even documented
+                # in Python 3 anymore, but it still seems to work and the "alternatives"
+                # (see http://stackoverflow.com/a/67692) are simply too insane to use
+                load_source(module_name, plugin_path)
+            except Exception as error:
+                print(T.red("Error loading %s: %s." % (T.bold(plugin_path) + T.red, error)))
+                return 1
+
     if args.allow is not None:
-        filter_scopes = set(filter_scopes) - set(args.allow)
+        for filter_scope in args.allow:
+            if filter_scope not in SYSCALL_FILTERS:
+                print(T.red("Unknown operation in --allow: %s." % (T.bold(filter_scope) + T.red)))
+                return 1
+        filter_scopes = set(SYSCALL_FILTERS.keys()) - set(args.allow)
     elif args.deny is not None:
+        for filter_scope in args.deny:
+            if filter_scope not in SYSCALL_FILTERS:
+                print(T.red("Unknown operation in --deny: %s." % (T.bold(filter_scope) + T.red)))
+                return 1
         filter_scopes = args.deny
+    else:
+        filter_scopes = SYSCALL_FILTERS.keys()
 
     syscall_filters = {}
 
-    for filter_scope in filter_scopes:
-        for syscall_filter in SYSCALL_FILTERS[filter_scope]:
-            syscall_filters[syscall_filter.name] = syscall_filter
+    for filter_scope in SYSCALL_FILTERS:
+        if filter_scope in filter_scopes:
+            for syscall in SYSCALL_FILTERS[filter_scope]:
+                syscall_filters[syscall] = SYSCALL_FILTERS[filter_scope][syscall]
+
+    # Suppress logging output from python-ptrace
+    getLogger().addHandler(NullHandler())
 
     # Prevent python-ptrace from decoding arguments to keep raw numerical values
     DIRFD_ARGUMENTS.clear()
@@ -192,12 +218,8 @@ def main(argv=sys.argv[1:]):
         return 1
 
     debugger = PtraceDebugger()
+    debugger.traceFork()
     debugger.traceExec()
-    try:
-        debugger.traceFork()
-    except DebuggerError:
-        print(T.yellow(_("Warning: Running without traceFork support. ") +
-                       _("Syscalls from subprocesses can not be intercepted.")))
 
     process = debugger.addProcess(pid, True)
     process.syscall()
@@ -222,8 +244,9 @@ def main(argv=sys.argv[1:]):
         for operation in operations:
             print(("" if args.list_only else "  ") + operation)
         if not args.list_only:
+            print("\nDo you want to rerun %s and permit these operations? [y/N] " % T.bold(command), end="")
             try:
-                choice = input(_("\nDo you want to rerun %s and permit these operations? [y/N] ") % T.bold(command))
+                choice = input()
             except KeyboardInterrupt:
                 choice = ""
                 # Ctrl+C does not print a newline automatically

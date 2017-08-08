@@ -1,6 +1,6 @@
 # maybe - see what a program does before deciding whether you really want it to happen
 #
-# Copyright (c) 2016 Philipp Emanuel Weidmann <pew@worldwidemann.com>
+# Copyright (c) 2016-2017 Philipp Emanuel Weidmann <pew@worldwidemann.com>
 #
 # Nemo vir est qui mundum non reddat meliorem.
 #
@@ -10,13 +10,11 @@
 
 from pwd import getpwuid
 from grp import getgrgid
-from os.path import abspath
 
-from maybe import SyscallFilter, SYSCALL_FILTERS, T
-from maybe.filters.create_write_file import get_file_descriptor_path
+from maybe import T, register_filter
 
 
-def format_change_owner(path, owner, group):
+def filter_change_owner(path, owner, group):
     if owner == -1:
         label = "change group"
         owner = getgrgid(group)[0]
@@ -26,24 +24,14 @@ def format_change_owner(path, owner, group):
     else:
         label = "change owner"
         owner = getpwuid(owner)[0] + ":" + getgrgid(group)[0]
-    return "%s of %s to %s" % (T.yellow(label), T.underline(abspath(path)), T.bold(owner))
+    return "%s of %s to %s" % (T.yellow(label), T.underline(path), T.bold(owner)), 0
 
 
-SYSCALL_FILTERS["change_owner"] = [
-    SyscallFilter(
-        name="chown",
-        format=lambda args: format_change_owner(args[0], args[1], args[2]),
-    ),
-    SyscallFilter(
-        name="fchown",
-        format=lambda args: format_change_owner(get_file_descriptor_path(args[0]), args[1], args[2]),
-    ),
-    SyscallFilter(
-        name="lchown",
-        format=lambda args: format_change_owner(args[0], args[1], args[2]),
-    ),
-    SyscallFilter(
-        name="fchownat",
-        format=lambda args: format_change_owner(args[1], args[2], args[3]),
-    ),
-]
+register_filter("chown", lambda process, args:
+                filter_change_owner(process.full_path(args[0]), args[1], args[2]))
+register_filter("fchown", lambda process, args:
+                filter_change_owner(process.descriptor_path(args[0]), args[1], args[2]))
+register_filter("lchown", lambda process, args:
+                filter_change_owner(process.full_path(args[0]), args[1], args[2]))
+register_filter("fchownat", lambda process, args:
+                filter_change_owner(process.full_path(args[1], args[0]), args[2], args[3]))

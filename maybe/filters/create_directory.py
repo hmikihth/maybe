@@ -1,6 +1,6 @@
 # maybe - see what a program does before deciding whether you really want it to happen
 #
-# Copyright (c) 2016 Philipp Emanuel Weidmann <pew@worldwidemann.com>
+# Copyright (c) 2016-2017 Philipp Emanuel Weidmann <pew@worldwidemann.com>
 #
 # Nemo vir est qui mundum non reddat meliorem.
 #
@@ -8,22 +8,14 @@
 # (https://gnu.org/licenses/gpl.html)
 
 
-from os.path import abspath
-
-from maybe import SyscallFilter, SYSCALL_FILTERS, T
+from maybe import T, register_filter
 
 
-def format_create_directory(path):
-    return "%s %s" % (T.cyan("create directory"), T.underline(abspath(path)))
+def filter_create_directory(path):
+    return "%s %s" % (T.cyan("create directory"), T.underline(path)), 0
 
 
-SYSCALL_FILTERS["create_directory"] = [
-    SyscallFilter(
-        name="mkdir",
-        format=lambda args: format_create_directory(args[0]),
-    ),
-    SyscallFilter(
-        name="mkdirat",
-        format=lambda args: format_create_directory(args[1]),
-    ),
-]
+register_filter("mkdir", lambda process, args:
+                filter_create_directory(process.full_path(args[0])))
+register_filter("mkdirat", lambda process, args:
+                filter_create_directory(process.full_path(args[1], args[0])))
